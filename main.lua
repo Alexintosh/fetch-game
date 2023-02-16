@@ -8,8 +8,8 @@ local gravity = -9
 local gameStarted = false
 
 function love.load()
+    camera = require("/lib/hump/camera")
     gameMap = sti('/maps/testMap.lua')
-
     W, H, flags = love.window.getMode( )
     
     player.h = 128
@@ -17,8 +17,10 @@ function love.load()
     player.x = 0
     player.y = H - player.h
 
+    cam = camera(0, H);
+
     ground = player.y
-    player.speed = 100
+    player.speed = 400
     player.sprite = love.graphics.newImage("assets/llama_walk.png")
     player.grid = anim8.newGrid(128, 128, player.sprite:getWidth(), player.sprite:getHeight())
     player.animations = {}
@@ -46,20 +48,34 @@ function love.update(dt)
         gameStarted = true
     end
 
-    player:update(dt)
-
     if love.keyboard.isDown("r") then
         love.event.quit( "restart" )
     end
+
+    cam:lookAt(player.x + W/4, cam.y)
+
+    if cam.x < W/2 then
+        cam.x = W/2
+    end
+    cam.y = H - H/2
+
+    if gameStarted then
+        player:update(dt)
+    end
+
     
 end
 
 function love.draw()
-    gameMap:draw()
-    player.anim:draw(player.sprite, player.x, player.y)
+    cam:attach()
+        gameMap:drawLayer(gameMap.layers["ground"])
+        gameMap:drawLayer(gameMap.layers["trees"])
+        
+        player.anim:draw(player.sprite, player.x, player.y)
 
-    love.graphics.print(player.y, 10, 10)
-    love.graphics.print(ground - jumpSpeed * 5.5, 10, 35)
+        love.graphics.print(player.y, 10, 10)
+        love.graphics.print(ground - jumpSpeed * 5.5, 10, 35)
+    cam:detach()
     
 end
 
@@ -77,7 +93,6 @@ function isFalling()
 end
 
 function player:update(dt)
-    local isMoving = true
     local jumpMaxHeight = ground - jumpHeight
 
     if gameStarted == false then
@@ -87,7 +102,7 @@ function player:update(dt)
     end
 
     -- TODO: make it so you can't jump before you hit the ground again
-    if love.keyboard.isDown("space") then
+    if love.keyboard.isDown("space") and player.state == player.states.running then
         player.state = player.states.jumping
         player.anim:gotoFrame(1)
     end
@@ -104,22 +119,10 @@ function player:update(dt)
     if isFalling() then
         if player.y < ground then
             player.y = player.y + (jumpSpeed * dt)
+        else
+            player.state = player.states.running
         end
     end
-
-    -- if love.keyboard.isDown("left") then
-    --     isMoving = true
-    --     player.anim = player.animations.left
-    --     player.x = player.x - player.speed
-    -- end
-
-    -- if love.keyboard.isDown("right") then
-    --     isMoving = true
-    --     player.anim = player.animations.right
-    --     player.x = player.x + player.speed
-    -- end
-
-    
 
     player.anim:update(dt)
 end
